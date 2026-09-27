@@ -1,5 +1,6 @@
 from pydantic import Field
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.prompts import base
 
 # FastMCP is a high-level library for building MCP servers.
 # MCP (Model Context Protocol) is how Claude communicates with external tools and data sources.
@@ -20,7 +21,6 @@ docs = {
 # The @mcp.tool decorator registers this function as an MCP tool.
 # `name` and `description` are what Claude sees when deciding whether to use it.
 
-# TODO: Write a tool to read a doc
 @mcp.tool(
     name="read_doc",
     description="Read the contents of a document and retun it as a string.",
@@ -47,8 +47,44 @@ def edit_doc(
     docs[doc_id] = docs[doc_id].replace(old_string, new_string)
     return docs[doc_id]
 
-# TODO: Write a resource to return the contents of a particular doc
-# TODO: Write a prompt to rewrite a doc in markdown format
+@mcp.resource(
+    "docs://documents",
+    mime_type="application/json"
+)
+def lits_docs() -> list[str]:
+    return list(docs.keys())
+
+@mcp.resource(
+    "docs://documents/{doc_id}",
+    mime_type="text/plain"
+)
+def fetch_doc(doc_id: str) -> str:
+    if doc_id not in docs:
+        raise ValueError(f"Document with ID '{doc_id}' not found.")
+    return docs[doc_id]
+
+@mcp.prompt(
+    name="format",
+    description="Rewrites the content of the document in Markdown format.",
+)
+def format_document(
+    doc_id: str=Field(description="The ID of the document to format."),
+) -> list[base.Message]:
+    prompt = f"""
+    Tour goal is to reformat a doument to be written with markdown syntax.
+
+    The id of the document you need to reformat is:
+    <document_id>
+    {doc_id}
+    </document_id>
+
+    Add in headers, bullet points, tables, etc as necessary. Feel free to add in examples, diagrams, and other elements to make the document more engaging and informative. The final output should be a well-structured Markdown document that is easy to read and understand.
+    Use the 'edit_document' tool to edit the document. After the documnent has been reformatted, return the final version of the document as a string.
+    """
+    return [base.UserMessage(prompt)]
+
+
+
 # TODO: Write a prompt to summarize a doc
 
 

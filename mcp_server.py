@@ -1,6 +1,7 @@
 from pydantic import Field
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.prompts import base
+import os
 
 # FastMCP is a high-level library for building MCP servers.
 # MCP (Model Context Protocol) is how Claude communicates with external tools and data sources.
@@ -32,6 +33,23 @@ def read_docs(
     if doc_id not in docs:
         raise ValueError(f"Document with ID '{doc_id}' not found.")
     return docs[doc_id]
+
+@mcp.tool(
+    name="save_docs",
+    description="Save the contents of a document.",
+)
+def save_docs(
+    doc_id: str = Field(..., description="The ID of the document to save."),
+    content: str = Field(..., description="The content to save in the document."),
+    path: str = Field(..., description="The path to save the document."),
+):
+    if doc_id not in docs:
+        raise ValueError(f"Document with ID '{doc_id}' not found.")
+    full_path = os.path.join(path, doc_id)
+    with open(full_path, "w") as f:
+        f.write(content)
+    return f"Document '{doc_id}' saved to '{full_path}'."
+
 
 @mcp.tool(
     name="edit_doc",
@@ -82,6 +100,7 @@ def format_document(
     Use the 'edit_document' tool to edit the document. After the documnent has been reformatted, return the final version of the document as a string.
     """
     return [base.UserMessage(prompt)]
+
 
 
 
